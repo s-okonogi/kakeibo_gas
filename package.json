@@ -5,5 +5,8 @@
   "scripts": {
     "format": "prettier --write '**/*.{js,ts}'",
     "push": "git push && clasp push"
+  },
+  "dependencies": {
+    "@types/google-apps-script": "^1.0.92"
   }
 }
