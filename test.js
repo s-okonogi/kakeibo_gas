@@ -1,71 +1,97 @@
+function getCategoryMap(categoryData) {
+  return categoryData.reduce((map, item) => {
+    map[item.category_detail] = item.category;
+    return map;
+  }, {});
+}
+
+function getAllCategories(categoryData) {
+  return [...new Set(categoryData.map(item => item.category))];
+}
+
+function generateMonths(startY, startM, endY, endM) {
+  const months = new Set();
+  for (let y = startY; y <= endY; y++) {
+    const fromM = y === startY ? startM : 1;
+    const toM = y === endY ? endM : 12;
+    for (let m = fromM; m <= toM; m++) {
+      months.add(`${y}-${String(m).padStart(2, "0")}`);
+    }
+  }
+  return months;
+}
+
+function processData(data, categoryMap, monthlyCategorySums, months) {
+  for (const row of data) {
+    const date = new Date(row.タイムスタンプ);
+    const month = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}`;
+    months.add(month);
+    const baseCat = categoryMap[row.カテゴリ] || row.カテゴリ;
+    monthlyCategorySums[month] = monthlyCategorySums[month] || {};
+    monthlyCategorySums[month][baseCat] = (monthlyCategorySums[month][baseCat] || 0) + row.支出金額;
+  }
+}
+
+function initializeMonthlySums(monthlyCategorySums, months, allCategories) {
+  for (const m of months) {
+    monthlyCategorySums[m] = monthlyCategorySums[m] || {};
+    for (const cat of allCategories) {
+      if (!monthlyCategorySums[m][cat]) monthlyCategorySums[m][cat] = 0;
+    }
+  }
+}
+
+function buildHtmlTable(monthlyCategorySums, months, allCategories) {
+  const sortedMonths = [...months].sort();
+  const sortedCategories = [...allCategories].sort();
+  const rows = [];
+  rows.push('<table><thead><tr><th>月</th><th>カテゴリ</th><th>合計</th></tr></thead><tbody>');
+  for (const m of sortedMonths) {
+    for (const cat of sortedCategories) {
+      rows.push(`<tr><td>${m}</td><td>${cat}</td><td>${monthlyCategorySums[m][cat]}</td></tr>`);
+    }
+  }
+  rows.push('</tbody></table>');
+  return rows.join('');
+}
+
 function myFunction() {
   const mdl = new Model();
-
   const data = mdl.getData("支出TRA");
-  const category_data = mdl.getData("カテゴリMTA");
-  const aggregatedData = aggregateExpenses(data, category_data);
+  const categoryData = mdl.getData("カテゴリ詳細MTA");
+  const categoryMap = getCategoryMap(categoryData);
+  const allCategories = getAllCategories(categoryData);
+  const monthlyCategorySums = {};
+  const months = generateMonths(2025, 1, 2025, 5);
 
-  // 集計結果の表示
-  for (const yearMonth in aggregatedData) {
-    Logger.log(`${yearMonth}の集計結果:`);
-    for (const category in aggregatedData[yearMonth]) {
-      Logger.log(`  ${category}: ${aggregatedData[yearMonth][category]}円`);
-    }
-  }
+  processData(data, categoryMap, monthlyCategorySums, months);
+  initializeMonthlySums(monthlyCategorySums, months, allCategories);
+  const html = buildHtmlTable(monthlyCategorySums, months, allCategories);
 
-  outputToSpreadsheet(aggregatedData, category_data);
+  Logger.log(monthlyCategorySums);
+  return html;
 }
 
-function aggregateExpenses(data, category_data) {
-  const monthlyExpenses = {};
+function test() {
+  const monthlyCategorySums = myFunction();
+  let sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("MonthlyData");
+  if (!sheet) {
+    sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet("MonthlyData");
+  }
+  sheet.clearContents();
 
-  data.forEach((item) => {
-    const date = new Date(item.日付);
-    const year = date.getFullYear();
-    const month = date.getMonth() + 1; // JavaScriptのgetMonth()は0-11を返すため+1
-    const category = item.カテゴリ;
-    const amount = item.金額;
+  const sortedMonths = Object.keys(monthlyCategorySums).sort();
+  const sortedCategories = Object.keys(monthlyCategorySums[sortedMonths[0]]).sort();
 
-    const yearMonth = `${year}-${month}`;
-
-    if (!monthlyExpenses[yearMonth]) {
-      monthlyExpenses[yearMonth] = {};
-    }
-
-    if (!monthlyExpenses[yearMonth][category]) {
-      monthlyExpenses[yearMonth][category] = 0;
-    }
-
-    monthlyExpenses[yearMonth][category] += amount;
+  sortedMonths.forEach((m, colIndex) => {
+    const label = m.split("-")[1].replace(/^0+/, "") + "月";
+    sheet.getRange(1, colIndex + 2).setValue(label);
   });
 
-  // 全カテゴリを含める
-  for (const yearMonth in monthlyExpenses) {
-    category_data.forEach((category) => {
-      if (!monthlyExpenses[yearMonth][category]) {
-        monthlyExpenses[yearMonth][category] = 0;
-      }
+  sortedCategories.forEach((cat, rowIndex) => {
+    sheet.getRange(rowIndex + 2, 1).setValue(cat);
+    sortedMonths.forEach((m, colIndex) => {
+      sheet.getRange(rowIndex + 2, colIndex + 2).setValue(monthlyCategorySums[m][cat]);
     });
-  }
-
-  return monthlyExpenses;
-}
-
-// テーブル形式で表示 (Apps ScriptのLoggerではテーブル表示ができないため、Spreadsheetに出力する例)
-
-function outputToSpreadsheet(data, category_data) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("集計結果") || ss.insertSheet("集計結果"); // "集計結果"シートを取得、なければ作成
-
-  // ヘッダー行の作成
-  const header = ["年月", "カテゴリ", "金額"];
-  sheet.appendRow(header);
-
-  // データ行の作成
-  for (const yearMonth in data) {
-    category_data.forEach((category) => {
-      const row = [yearMonth, category, data[yearMonth][category] || 0];
-      sheet.appendRow(row);
-    });
-  }
+  });
 }

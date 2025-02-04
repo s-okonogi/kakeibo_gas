@@ -1,6 +1,9 @@
 プロジェクトのURL
 https://script.google.com/u/0/home/projects/1fX8727Zy8j55VeHzbrmZcflM3CNK4UOGMpM5TieYBgG61vUTkvfo2wDS/edit
 
+db作成を参考にしたwebサイト
+https://qiita.com/BruceWeyne/items/54cffecf338cc278523c
+
 
 登録済みコマンド
 npm run format # フォーマット自動整形
