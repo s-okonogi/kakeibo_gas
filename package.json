@@ -1,0 +1,9 @@
+{
+  "devDependencies": {
+    "prettier": "^3.4.2"
+  },
+  "scripts": {
+    "format": "prettier --write '**/*.{js,ts}'",
+    "push": "git push && clasp push"
+  }
+}
