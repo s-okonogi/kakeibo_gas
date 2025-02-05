@@ -1,3 +1,4 @@
+// {ガソリン・洗車=交通費, 日用品・不定期=日用品, 日用品・毎月=日用品, 電車・ECT・その他交通系=交通費, 外食・その他=食費, 自炊=食費}
 function getCategoryMap(categoryData) {
   return categoryData.reduce((map, item) => {
     map[item.詳細カテゴリ] = item.カテゴリ;
@@ -7,6 +8,10 @@ function getCategoryMap(categoryData) {
 
 function getAllCategories(categoryData) {
   return [...new Set(categoryData.map(item => item.カテゴリ))];
+}
+
+function getAllCategoriesDetail(categoryData) {
+  return [...new Set(categoryData.map(item => item.詳細カテゴリ))];
 }
 
 function generateMonths(startY, startM, endY, endM) {
@@ -26,7 +31,18 @@ function processData(data, categoryMap, monthlyCategorySums, months) {
     const date = new Date(row.タイムスタンプ);
     const month = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}`;
     months.add(month);
-    const baseCat = categoryMap[row.カテゴリ] || row.カテゴリ;
+    const baseCat = categoryMap[row.詳細カテゴリ] || row.詳細カテゴリ;
+    monthlyCategorySums[month] = monthlyCategorySums[month] || {};
+    monthlyCategorySums[month][baseCat] = (monthlyCategorySums[month][baseCat] || 0) + row.支出金額;
+  }
+}
+
+function processDataDetail(data, monthlyCategorySums, months) {
+  for (const row of data) {
+    const date = new Date(row.タイムスタンプ);
+    const month = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}`;
+    months.add(month);
+    const baseCat = row.詳細カテゴリ;
     monthlyCategorySums[month] = monthlyCategorySums[month] || {};
     monthlyCategorySums[month][baseCat] = (monthlyCategorySums[month][baseCat] || 0) + row.支出金額;
   }
@@ -70,6 +86,22 @@ function tukibetu_category_big() {
   //return html;
   Logger.log(monthlyCategorySums);
   return monthlyCategorySums;
+}
+
+function tukibetu_category_small() {
+  const mdl = new Model();
+  const data = mdl.getData("支出TRA");
+  const categoryData = mdl.getData("カテゴリ詳細MTA");
+  const allCategoriesDetail = getAllCategoriesDetail(categoryData);
+  const monthlyCategoryDetailSums = {};
+  const months = generateMonths(2025, 1, 2025, 5);
+
+  processDataDetail(data, monthlyCategoryDetailSums, months);
+  initializeMonthlySums(monthlyCategoryDetailSums, months, allCategoriesDetail);
+  const html = buildHtmlTable(monthlyCategoryDetailSums, months, allCategoriesDetail);
+  //return html;
+  Logger.log(monthlyCategoryDetailSums);
+  return monthlyCategoryDetailSums;
 }
 
 function save_sheet() {
