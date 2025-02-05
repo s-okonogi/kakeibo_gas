@@ -1,12 +1,12 @@
 function getCategoryMap(categoryData) {
   return categoryData.reduce((map, item) => {
-    map[item.category_detail] = item.category;
+    map[item.詳細カテゴリ] = item.カテゴリ;
     return map;
   }, {});
 }
 
 function getAllCategories(categoryData) {
-  return [...new Set(categoryData.map(item => item.category))];
+  return [...new Set(categoryData.map(item => item.カテゴリ))];
 }
 
 function generateMonths(startY, startM, endY, endM) {
@@ -55,7 +55,7 @@ function buildHtmlTable(monthlyCategorySums, months, allCategories) {
   return rows.join('');
 }
 
-function myFunction() {
+function tukibetu_category_big() {
   const mdl = new Model();
   const data = mdl.getData("支出TRA");
   const categoryData = mdl.getData("カテゴリ詳細MTA");
@@ -67,12 +67,12 @@ function myFunction() {
   processData(data, categoryMap, monthlyCategorySums, months);
   initializeMonthlySums(monthlyCategorySums, months, allCategories);
   const html = buildHtmlTable(monthlyCategorySums, months, allCategories);
-
+  //return html;
   Logger.log(monthlyCategorySums);
-  return html;
+  return monthlyCategorySums;
 }
 
-function test() {
+function save_sheet() {
   const monthlyCategorySums = myFunction();
   let sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("MonthlyData");
   if (!sheet) {
@@ -84,8 +84,7 @@ function test() {
   const sortedCategories = Object.keys(monthlyCategorySums[sortedMonths[0]]).sort();
 
   sortedMonths.forEach((m, colIndex) => {
-    const label = m.split("-")[1].replace(/^0+/, "") + "月";
-    sheet.getRange(1, colIndex + 2).setValue(label);
+    sheet.getRange(1, colIndex + 2).setValue(m);
   });
 
   sortedCategories.forEach((cat, rowIndex) => {
